@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - 'develop'
+      - 'master'
     tags:
       - '[0-9]*'
   pull_request:
@@ -236,7 +237,7 @@ jobs:
 
   archive_source_code:
     # if: startsWith(github.ref, 'refs/tags/')
-    # if: ${{ github.ref_type == 'tag' }}
+    if: ${{ github.ref_type == 'tag' }}
     name: Source code archive
     runs-on: ubuntu-20.04
     env:
@@ -433,3 +434,14 @@ jobs:
 
       - name: Display file information
         run: ls -lR
+
+      - name: Release
+        uses: softprops/action-gh-release@v0.1.15
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          files: |
+            sfizz-${{ github.ref_name }}-*
+            sfizz-${{ github.ref_name }}.*
