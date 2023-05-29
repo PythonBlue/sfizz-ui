@@ -236,7 +236,7 @@ jobs:
 
   archive_source_code:
     # if: startsWith(github.ref, 'refs/tags/')
-    if: ${{ github.ref_type == 'tag' }}
+    # if: ${{ github.ref_type == 'tag' }}
     name: Source code archive
     runs-on: ubuntu-20.04
     env:
