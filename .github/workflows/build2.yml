@@ -433,16 +433,3 @@ jobs:
 
       - name: Display file information
         run: ls -lR
-
-      - name: Release
-        uses: softprops/action-gh-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref_name }}
-          name: Release ${{ github.ref_name }}
-          draft: false
-          prerelease: false
-          files: |
-            sfizz-${{ github.ref_name }}-*
-            sfizz-${{ github.ref_name }}.*
