@@ -21,7 +21,7 @@ env:
 # working-directory: ${{ github.workspace }}
 jobs:
   clang_tidy:
-  # if: ${{ false }}
+    if: ${{ github.ref_type == 'branch' }}
     name: Clang Tidy
     runs-on: ubuntu-20.04
     steps:
@@ -35,7 +35,6 @@ jobs:
       run: ./scripts/run_clang_tidy.sh
 
   build_for_linux:
-  # if: ${{ false }}
     name: Linux Ubuntu 22.04
     runs-on: ubuntu-22.04 # abseil (libabsl) is not available in 20.04 repository
     steps:
@@ -128,7 +127,6 @@ jobs:
     # No custom Linux packages, build from sources or provided in distro
 
   build_for_macos:
-  # if: ${{ false }}
     name: macOS 11
     runs-on: macos-11
     env:
@@ -158,6 +156,15 @@ jobs:
             ${options[@]}
             -D SFIZZ_USE_SYSTEM_ABSEIL=ON
           )
+        else
+          options=(
+            ${options[@]}
+            # FIXME:
+            # Disable WavPack optimizations to let the universal build to work, see
+            # https://github.com/dbry/WavPack/issues/93
+            -D CMAKE_OSX_ARCHITECTURES="arm64;x86_64"
+            -D WAVPACK_ENABLE_ASM=OFF
+          )
         fi
         cmake "${options[@]}"
         echo "-- runner.workspace: ${{ runner.workspace }}"
@@ -171,6 +178,7 @@ jobs:
           --verbose
         )
         cmake "${options[@]}"
+        lipo -i ./build/sfizz.component/Contents/MacOS/sfizz
     - name: Validate AU
       working-directory: ${{ github.workspace }}/build
       # Force a rescan after copy (thank you @PythonBlue), see
@@ -202,7 +210,6 @@ jobs:
         path: "${{ github.workspace }}/build/${{ env.install_name }}.pkg"
 
   build_for_windows:
-  # if: ${{ false }}
     name: Windows 2019
     runs-on: windows-2019
     strategy:
@@ -271,7 +278,6 @@ jobs:
         path: "${{ github.workspace }}/build/${{ env.install_name }}.exe"
 
   archive_source_code:
-    # if: startsWith(github.ref, 'refs/tags/')
     if: ${{ github.ref_type == 'tag' }}
     name: Source code archive
     runs-on: ubuntu-20.04
@@ -349,7 +355,6 @@ jobs:
     if: ${{ github.ref_type == 'tag' }}
     runs-on: ubuntu-20.04
     needs:
-      # - build_for_linux
       - build_for_macos
       # - build_for_mod
       - build_for_windows
