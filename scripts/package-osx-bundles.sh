@@ -15,26 +15,26 @@ rm -rf lv2
 rm -rf vst3
 
 mkdir au lv2 vst3
-cp -r sfizz.component au/sfizz.component
-cp -r sfizz.lv2 lv2/sfizz.lv2
-cp -r sfizz.vst3 vst3/sfizz.vst3
+mv sfizz.component au/
+mv sfizz.lv2 lv2/
+mv sfizz.vst3 vst3/
 
 pkgbuild \
   --identifier "sfz.tools.sfizz.au.bundle" \
   --install-location "/Library/Audio/Plug-Ins/Components/" \
   --root "${PWD}/au/" \
-  ../sfz-tools-sfizz-au-bundle.pkg
+  sfz-tools-sfizz-au-bundle.pkg
 
 pkgbuild \
   --identifier "sfz.tools.sfizz.lv2.bundle" \
   --install-location "/Library/Audio/Plug-Ins/LV2/" \
   --root "${PWD}/lv2/" \
-  ../sfz-tools-sfizz-lv2-bundle.pkg
+  sfz-tools-sfizz-lv2-bundle.pkg
 
 pkgbuild \
   --identifier "sfz.tools.sfizz.vst3.bundle" \
   --install-location "/Library/Audio/Plug-Ins/VST3/" \
   --root "${PWD}/vst3/" \
-  ../sfz-tools-sfizz-vst3-bundle.pkg
+  sfz-tools-sfizz-vst3-bundle.pkg
 
 cd ..
