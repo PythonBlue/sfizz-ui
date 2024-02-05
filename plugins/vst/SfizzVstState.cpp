@@ -5,6 +5,7 @@
 // If not, contact the sfizz maintainers at https://github.com/sfztools/sfizz
 
 #include "SfizzVstState.h"
+#include "plugin/NativeHelpers.h"
 #include <sfizz.h>
 #include <mutex>
 #include <cstring>
@@ -21,7 +22,7 @@ tresult SfizzVstState::load(IBStream* state)
         return kResultFalse;
 
     if (const char* str = s.readStr8())
-        sfzFile = str;
+        sfzFile = fromPlatformAgnosticPath(str).string();
     else
         return kResultFalse;
 
@@ -41,7 +42,7 @@ tresult SfizzVstState::load(IBStream* state)
 
     if (version >= 1) {
         if (const char* str = s.readStr8())
-            scalaFile = str;
+            scalaFile = fromPlatformAgnosticPath(str).string();
         else
             return kResultFalse;
 
@@ -121,7 +122,7 @@ tresult SfizzVstState::store(IBStream* state) const
     if (!s.writeInt64u(currentStateVersion))
         return kResultFalse;
 
-    if (!s.writeStr8(sfzFile.c_str()))
+    if (!s.writeStr8(toPlatformAgnosticPath(sfzFile).string().c_str()))
         return kResultFalse;
 
     if (!s.writeFloat(volume))
@@ -136,7 +137,7 @@ tresult SfizzVstState::store(IBStream* state) const
     if (!s.writeInt32(preloadSize))
         return kResultFalse;
 
-    if (!s.writeStr8(scalaFile.c_str()))
+    if (!s.writeStr8(toPlatformAgnosticPath(scalaFile).string().c_str()))
         return kResultFalse;
 
     if (!s.writeInt32(scalaRootKey))

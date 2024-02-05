@@ -129,16 +129,28 @@ jobs:
   build_for_macos:
     name: macOS 11
     runs-on: macos-11
-    env:
-      install_name: "sfizz-${{ github.ref_name }}-macos"
     steps:
+    - name: Update bash
+      run: brew install bash
+    - name: Set install_name
+      run: |
+        ghref=${{ github.ref_name }}
+        echo "install_name=sfizz-${ghref//'/'/'-'}-macos" >> "$GITHUB_ENV"
+    - name: Show summary
+      run: |
+        echo "install_name: ${{ env.install_name }}"
+        echo "BASH_VERSION: $BASH_VERSION"
+        system_profiler SPSoftwareDataType
+        cmake --version
+        gcc -v
+        xcodebuild -version
+    - name: Install dependencies
+      if: ${{ github.ref_type == 'branch' }}
+      run: brew install abseil
     - name: Checkout
       uses: actions/checkout@v3
       with:
         submodules: recursive
-    - name: Install dependencies
-      if: ${{ github.ref_type == 'branch' }}
-      run: brew install abseil
     - name: Configure CMake
       run: |
         options=(
@@ -159,9 +171,7 @@ jobs:
         else
           options=(
             ${options[@]}
-            # FIXME:
-            # Disable WavPack optimizations to let the universal build to work, see
-            # https://github.com/dbry/WavPack/issues/93
+            # FIXME: Find out why https://github.com/sfztools/sfizz/commit/d6f8a558607472ce222d0e2448bbe852028b4a39 is not working
             -D CMAKE_OSX_ARCHITECTURES="arm64;x86_64"
             -D WAVPACK_ENABLE_ASM=OFF
           )
@@ -188,10 +198,10 @@ jobs:
         sudo killall -9 AudioComponentRegistrar
         auval -v aumu samp Sfzt
     - name: Package bundles
-      if: ${{ github.ref_type == 'tag' }}
+      if: github.ref_type == 'tag' || github.event_name == 'pull_request'
       run: ./scripts/package-osx-bundles.sh
     - name: Create installer
-      if: ${{ github.ref_type == 'tag' }}
+      if: github.ref_type == 'tag' || github.event_name == 'pull_request'
       working-directory: ${{ github.workspace }}/build
       run: |
         options=(
@@ -203,7 +213,7 @@ jobs:
         )
         productbuild "${options[@]}"
     - name: Upload
-      if: ${{ github.ref_type == 'tag' }}
+      if: github.ref_type == 'tag' || github.event_name == 'pull_request'
       uses: actions/upload-artifact@v3
       with:
         name: macOS package
@@ -223,9 +233,14 @@ jobs:
           pkg_platform: Win64
           release_arch: x64
           bits: 64
-    env:
-      install_name: sfizz-${{ github.ref_name }}-win${{ matrix.bits }}
     steps:
+    - name: Set install name
+      run: |
+        $stripped_name="${{ github.ref_name }}".replace('/', '-')
+        echo "install_name=sfizz-$stripped_name-win${{ matrix.bits }}" >> "${env:GITHUB_ENV}"
+    - name: Show summary
+      run: |
+        echo "install_name: $env:install_name"
     - name: Checkout
       uses: actions/checkout@v3
       with:
@@ -267,11 +282,11 @@ jobs:
       working-directory: ${{ github.workspace }}/build
       run: pluginval --validate-in-process --validate sfizz.vst3
     - name: Create installer
-      if: ${{ github.ref_type == 'tag' }}
+      if: github.ref_type == 'tag' || github.event_name == 'pull_request'
       working-directory: ${{ github.workspace }}/build
       run: iscc /O"." /F"${{ env.install_name }}" /dARCH="${{ matrix.platform }}" innosetup.iss
     - name: Upload
-      if: ${{ github.ref_type == 'tag' }}
+      if: github.ref_type == 'tag' || github.event_name == 'pull_request'
       uses: actions/upload-artifact@v3
       with:
         name: ${{ matrix.pkg_platform }} installer
@@ -401,3 +416,33 @@ jobs:
           files: |
             sfizz-${{ github.ref_name }}-*
             sfizz-${{ github.ref_name }}.*
+  update_website:
+    if:      github.ref_type == 'tag'
+    name:    Update website
+    needs:   deploy
+    runs-on: ubuntu-latest
+    # Automate the creation of a post and atom feed to announce
+    # about the new version just released, and update the download links.
+    # We wants to make working this also with forks for testing purposes,
+    # so the site repository, branch and token names should be hardcoded
+    # to work at least with those having the same local settings:
+    # from "repository_owner/sfizz_fork" to "repository_owner/sfztools.github.io".
+    # So a classic token needed for authentication must be added in secrets
+    # with SITE_UPDATE_TOKEN as name (or please let us know if it's possible
+    # and eventually how to make it work with GITHUB_TOKEN instead).
+    steps:
+    - name: Build site
+      env:
+        api_version:  "2022-11-28"
+        site_repo:     sfztools.github.io
+        site_branch:   master
+        site_workflow: build.yml
+        token:     ${{ secrets.SITE_UPDATE_TOKEN }}
+      run: |
+        curl -L \
+          -X POST \
+          -H "Accept: application/vnd.github+json" \
+          -H "Authorization: Bearer ${{ env.token }}" \
+          -H "X-GitHub-Api-Version: ${{ env.api_version }}" \
+          https://api.github.com/repos/${{ github.repository_owner }}/${{ env.site_repo }}/actions/workflows/${{ env.site_workflow }}/dispatches \
+          -d '{"ref":"${{ env.site_branch }}"}'

@@ -14,14 +14,14 @@ project(sfizz
     DESCRIPTION  "SFZ sampler, providing AU, LV2, PureData and VST plugins."
     HOMEPAGE_URL "http://sfztools.github.io/sfizz"
     LANGUAGES    CXX C
-    VERSION      1.2.2
+    VERSION      1.2.3
 )
 set(PROJECT_REPOSITORY "https://github.com/sfztools/sfizz")
 set(PROJECT_AUTHOR     "SFZTools")
 set(PROJECT_EMAIL      "paul@ferrand.cc")
 
 set(LV2_PLUGIN_VERSION_MINOR 10)
-set(LV2_PLUGIN_VERSION_MICRO 4)
+set(LV2_PLUGIN_VERSION_MICRO 6)
 
 # External configuration CMake scripts
 set (CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};"
@@ -39,6 +39,9 @@ option_ex(PLUGIN_VST2              "Enable VST2 plug-in build (unsupported)" OFF
 option_ex(PLUGIN_VST3              "Enable VST3 plug-in build" ON)
 option_ex(SFIZZ_USE_SYSTEM_LV2     "Use LV2 headers preinstalled on system" OFF)
 option_ex(SFIZZ_USE_SYSTEM_VST3SDK "Use VST3SDK source files preinstalled on system" OFF)
+
+# This is useful with some IDE like QtCreator to avoid them to create additional virtual directories
+option_ex(SFIZZ_CMAKE_USE_EMPTY_SOURCE_GROUPS "Use CMake source_group by passing empty name" OFF)
 
 set(MIDI_CC_COUNT 512 CACHE STRING "Maximum amount of Control Change Messages")
 

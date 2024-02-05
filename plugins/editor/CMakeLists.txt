@@ -8,6 +8,10 @@ endif()
 
 include("cmake/Vstgui.cmake")
 
+set(EDITOR_THEMES
+    resources/Themes/Default/theme.xml
+    resources/Themes/Dark/theme.xml
+)
 set(EDITOR_RESOURCES
     logo.png
     logo_orange.png
@@ -33,10 +37,6 @@ set(EDITOR_RESOURCES
     Themes/Dark/theme.xml
     PARENT_SCOPE
 )
-set(UI_RESOURCES
-    resources/Themes/Default/theme.xml
-    resources/Themes/Dark/theme.xml
-)
 function(copy_editor_resources TARGET SOURCE_DIR DESTINATION_DIR)
     set(_deps)
     foreach(res ${EDITOR_RESOURCES})
@@ -53,12 +53,9 @@ function(copy_editor_resources TARGET SOURCE_DIR DESTINATION_DIR)
     add_dependencies("${TARGET}" "${TARGET}_editor_resources")
 endfunction()
 
-set(UI_FILES layout/main.fl layout/about.fl)
-source_group("Editor UI" FILES ${UI_FILES})
-source_group("Editor Resources" FILES ${UI_RESOURCES})
-
 # editor
-add_library(sfizz_editor STATIC EXCLUDE_FROM_ALL
+set(EDITOR_UI_FILES layout/main.fl layout/about.fl)
+set(EDITOR_SOURCES
     src/editor/EditIds.h
     src/editor/EditIds.cpp
     src/editor/Editor.h
@@ -90,37 +87,53 @@ add_library(sfizz_editor STATIC EXCLUDE_FROM_ALL
     src/editor/layout/about.hpp
     src/editor/utility/vstgui_after.h
     src/editor/utility/vstgui_before.h
-    ${UI_FILES}
-    ${UI_RESOURCES}
 )
-add_library(sfizz::editor ALIAS sfizz_editor)
-target_include_directories(sfizz_editor PUBLIC "src")
-target_link_libraries(sfizz_editor PUBLIC sfizz::messaging sfizz::plugins-common)
-target_link_libraries(sfizz_editor PRIVATE sfizz::vstgui)
-target_compile_definitions(sfizz_editor PRIVATE
+if(SFIZZ_CMAKE_USE_EMPTY_SOURCE_GROUPS)
+    source_group("" FILES ${EDITOR_SOURCES})
+    source_group("" FILES ${EDITOR_UI_FILES})
+    source_group("" FILES ${EDITOR_THEMES})
+endif()
+
+add_library(plugins_editor STATIC EXCLUDE_FROM_ALL
+    ${EDITOR_SOURCES}
+    ${EDITOR_THEMES}
+    ${EDITOR_UI_FILES}
+)
+add_library(plugins::editor ALIAS plugins_editor)
+
+target_include_directories(plugins_editor PUBLIC src)
+target_link_libraries(plugins_editor PUBLIC
+    sfizz::messaging
+    plugins::common
+)
+target_link_libraries(plugins_editor PRIVATE
+    plugins::vstgui
+    plugins::git_build_id
+)
+target_compile_definitions(plugins_editor PRIVATE
     "SFIZZ_VERSION=\"${CMAKE_PROJECT_VERSION}\"")
 if(APPLE)
     find_library(APPLE_APPKIT_LIBRARY "AppKit")
     find_library(APPLE_CORESERVICES_LIBRARY "CoreServices")
     find_library(APPLE_FOUNDATION_LIBRARY "Foundation")
-    target_sources(sfizz_editor PRIVATE
+    target_sources(plugins_editor PRIVATE
         src/editor/NativeHelpers.mm
         src/editor/VSTGUIHelpers.mm)
-    target_link_libraries(sfizz_editor PRIVATE
+    target_link_libraries(plugins_editor PRIVATE
         "${APPLE_APPKIT_LIBRARY}"
         "${APPLE_CORESERVICES_LIBRARY}"
         "${APPLE_FOUNDATION_LIBRARY}")
-    target_compile_options(sfizz_editor PRIVATE "-fobjc-arc")
+    target_compile_options(plugins_editor PRIVATE "-fobjc-arc")
 endif()
 
 # dependencies
-add_library(sfizz_colorspaces INTERFACE)
-add_library(sfizz::colorspaces ALIAS sfizz_colorspaces)
-target_include_directories(sfizz_colorspaces INTERFACE "external/color-spaces")
+add_library(plugins_colorspaces INTERFACE)
+add_library(plugins::colorspaces ALIAS plugins_colorspaces)
+target_include_directories(plugins_colorspaces INTERFACE "external/color-spaces")
 
-add_library(sfizz_stb_image INTERFACE)
-add_library(sfizz::stb_image ALIAS sfizz_stb_image)
-target_include_directories(sfizz_stb_image INTERFACE "external/stb_image")
+add_library(plugins_stb_image INTERFACE)
+add_library(plugins::stb_image ALIAS plugins_stb_image)
+target_include_directories(plugins_stb_image INTERFACE "external/stb_image")
 
 if(WIN32)
     #
@@ -129,19 +142,29 @@ elseif(APPLE)
 else()
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(sfizz-gio "gio-2.0" REQUIRED)
-    target_include_directories(sfizz_editor PRIVATE ${sfizz-gio_INCLUDE_DIRS})
-    target_link_libraries(sfizz_editor PRIVATE ${sfizz-gio_LIBRARIES})
+    target_include_directories(plugins_editor PRIVATE ${sfizz-gio_INCLUDE_DIRS})
+    target_link_libraries(plugins_editor PRIVATE ${sfizz-gio_LIBRARIES})
 endif()
-target_link_libraries(sfizz_editor PRIVATE sfizz::colorspaces sfizz::stb_image
-    sfizz::bit_array sfizz::filesystem sfizz::pugixml)
-
+target_link_libraries(plugins_editor PRIVATE
+    plugins::colorspaces
+    plugins::stb_image
+    sfizz::bit_array
+    sfizz::filesystem
+    sfizz::pugixml
+)
 # layout tool
 if(NOT CMAKE_CROSSCOMPILING)
-    add_executable(layout-maker
-        "tools/layout-maker/sources/layout.h"
-        "tools/layout-maker/sources/reader.cpp"
-        "tools/layout-maker/sources/reader.h"
-        "tools/layout-maker/sources/main.cpp")
+    set(LAYOUTMAKER_SOURCES
+        tools/layout-maker/sources/layout.h
+        tools/layout-maker/sources/reader.cpp
+        tools/layout-maker/sources/reader.h
+        tools/layout-maker/sources/main.cpp
+    )
+    if(SFIZZ_CMAKE_USE_EMPTY_SOURCE_GROUPS)
+        source_group("" FILES ${LAYOUTMAKER_SOURCES})
+    endif()
+
+    add_executable(layout-maker ${LAYOUTMAKER_SOURCES})
     target_link_libraries(layout-maker PRIVATE absl::strings)
 
     foreach(_layout main about)
@@ -153,6 +176,3 @@ if(NOT CMAKE_CROSSCOMPILING)
             DEPENDS layout-maker "${CMAKE_CURRENT_SOURCE_DIR}/layout/${_layout}.fl")
     endforeach()
 endif()
-
-# Git build identifier
-target_link_libraries(sfizz_editor PRIVATE sfizz-git-build-id)
