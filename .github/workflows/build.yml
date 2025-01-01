@@ -129,8 +129,8 @@ jobs:
     # No custom Linux packages, build from sources or provided in distro
 
   build_for_macos:
-    name: macOS 11
-    runs-on: macos-11
+    name: macOS
+    runs-on: macos-latest
     steps:
     - name: Update bash
       run: brew install bash
